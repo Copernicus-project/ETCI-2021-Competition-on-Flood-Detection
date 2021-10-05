@@ -4,8 +4,8 @@ import segmentation_models_pytorch as smp
 # dataset related
 dataset_root = ""
 train_dir = os.path.join(dataset_root, "../train/train/")
-valid_dir = os.path.join(dataset_root, "../train/valid/")
-test_dir = os.path.join(dataset_root, "../train/valid/")
+valid_dir = os.path.join(dataset_root, "../train/train/valid/")
+test_dir = os.path.join(dataset_root, "../train/train/valid/")
 local_batch_size = 2
 
 # model related
