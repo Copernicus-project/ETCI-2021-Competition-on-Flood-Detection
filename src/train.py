@@ -187,6 +187,7 @@ def train(rank, num_epochs, world_size):
                         losses.update(loss.cpu().item(), image.size(0))
 
             loss = losses.avg
+            print(loss)
             global_loss = metric_utils.global_meters_all_avg(rank, world_size, loss)
             if rank == 0:
                 logging.info(f"Epoch: {epoch+1} Val Loss: {global_loss[0]:.3f}")
@@ -201,4 +202,10 @@ def train(rank, num_epochs, world_size):
 WORLD_SIZE = torch.cuda.device_count()
 
 if __name__ == "__main__":
+    print("start")
+    print(WORLD_SIZE)
+    print(torch.cuda.is_available())
+    x = torch.rand(5, 3)
+    print(x)
     mp.spawn(train, args=(config.num_epochs, WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
+    print("finish")
