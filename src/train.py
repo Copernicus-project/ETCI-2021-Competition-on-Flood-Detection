@@ -121,6 +121,7 @@ def train(rank, num_epochs, world_size):
     print("rank:", rank)
     # model loading and off-loading to the current device
     model = create_model(smp.Unet, "mobilenet_v2")
+
     torch.cuda.set_device(rank)
     model.cuda(rank)
     model = DistributedDataParallel(model, device_ids=[rank])

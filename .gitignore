@@ -1,7 +1,7 @@
 .ipynb_checkpoints/
 .DS_Store
 .idea/
-/train/
+!./train/
 /train/valid/
 /train/train/
 /train/__MACOSX/
