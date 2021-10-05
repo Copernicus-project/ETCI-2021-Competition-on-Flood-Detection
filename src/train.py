@@ -83,7 +83,7 @@ def get_dataloader(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=train_sampler,
         pin_memory=True,
-        num_workers=8,
+        num_workers=1,
         worker_init_fn=worker_utils.seed_worker,
     )
     val_loader = DataLoader(
@@ -91,7 +91,7 @@ def get_dataloader(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=val_sampler,
         pin_memory=True,
-        num_workers=8,
+        num_workers=1,
     )
 
     return train_loader, val_loader
@@ -118,6 +118,7 @@ def train(rank, num_epochs, world_size):
     worker_utils.init_process(rank, world_size)
     torch.manual_seed(0)
 
+    print("rank:", rank)
     # model loading and off-loading to the current device
     model = create_model(smp.Unet, "mobilenet_v2")
     torch.cuda.set_device(rank)
@@ -136,6 +137,7 @@ def train(rank, num_epochs, world_size):
 
     ## begin training ##
     for epoch in range(num_epochs):
+        print("epoch:", epoch)
         losses = metric_utils.AvgMeter()
 
         if rank == 0:
@@ -167,7 +169,7 @@ def train(rank, num_epochs, world_size):
         global_loss = metric_utils.global_meters_all_avg(rank, world_size, loss)
 
         if rank == 0:
-            logging.info(f"Epoch: {epoch+1} Train Loss: {global_loss[0]:.3f}")
+            logging.info(f"Epoch: {epoch + 1} Train Loss: {global_loss[0]:.3f}")
 
         ## evaluation ##
         if epoch % 5 == 0:
@@ -190,8 +192,8 @@ def train(rank, num_epochs, world_size):
             print(loss)
             global_loss = metric_utils.global_meters_all_avg(rank, world_size, loss)
             if rank == 0:
-                logging.info(f"Epoch: {epoch+1} Val Loss: {global_loss[0]:.3f}")
-
+                logging.info(f"Epoch: {epoch + 1} Val Loss: {global_loss[0]:.3f}")
+            print("losses:", losses)
     # serialization of model weights
     if rank == 0:
         torch.save(
@@ -203,9 +205,9 @@ WORLD_SIZE = torch.cuda.device_count()
 
 if __name__ == "__main__":
     print("start")
-    print(WORLD_SIZE)
     print(torch.cuda.is_available())
-    x = torch.rand(5, 3)
-    print(x)
+    print(WORLD_SIZE)
+    print(mp.cpu_count())
+
     mp.spawn(train, args=(config.num_epochs, WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
     print("finish")

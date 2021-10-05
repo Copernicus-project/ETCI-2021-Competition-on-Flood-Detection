@@ -5,8 +5,8 @@ import segmentation_models_pytorch as smp
 dataset_root = ""
 train_dir = os.path.join(dataset_root, "../train/train/")
 valid_dir = os.path.join(dataset_root, "../train/valid/")
-test_dir = os.path.join(dataset_root, "test_internal")
-local_batch_size = 96
+test_dir = os.path.join(dataset_root, "../train/valid/")
+local_batch_size = 2
 
 # model related
 backbone = "mobilenet_v2"
