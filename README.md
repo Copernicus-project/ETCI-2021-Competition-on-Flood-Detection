@@ -1,4 +1,4 @@
-#🙈 Use pretrained weights
+# 🙈 Use pretrained weights
 If you wanna get the pretrained model, just run the codes as follows:
 ```
 import torch
