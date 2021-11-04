@@ -83,7 +83,7 @@ def get_dataloader_un(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=train_sampler,
         pin_memory=True,
-        num_workers=1,
+        num_workers=2,
         worker_init_fn=worker_utils.seed_worker,
     )
     val_loader = DataLoader(
@@ -91,7 +91,7 @@ def get_dataloader_un(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=val_sampler,
         pin_memory=True,
-        num_workers=1,
+        num_workers=2,
     )
 
     return train_loader, val_loader

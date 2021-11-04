@@ -47,18 +47,18 @@ logging.basicConfig(
 def get_dataloader(rank, world_size):
     """Creates the data loaders."""
     # create dataframes
-    train_df = dataset_utils.create_df_un(config.train_dir)[0:10]
-    valid_df = dataset_utils.create_df_un(config.valid_dir)[0:10]
+    train_df = dataset_utils.create_df_un(config.train_dir)
+    valid_df = dataset_utils.create_df_un(config.valid_dir)
     # this path depends on where you have serialized the dataframe while
     # executing `notebook/Generate_Pseudo.ipynb`.
 
     pseudo_df_path = "../notebooks/pseudo_df.csv"
     pseudo_df = pd.read_csv(pseudo_df_path)
-    train_df = pd.concat([train_df, pseudo_df], axis=1)
+    length = int(len(pseudo_df) / 5)
+    train_df = pd.concat([train_df[0:length], pseudo_df[0:length]], axis=1)
     # determine if an image has mask or not
     flood_label_paths = train_df["flood_label_path2"].values.tolist()
     train_has_masks = list(map(dataset_utils.has_mask, flood_label_paths))
-    print(train_has_masks)
     train_df["has_mask"] = train_has_masks
 
     # filter invalid images
@@ -78,7 +78,7 @@ def get_dataloader(rank, world_size):
 
     # define dataset
     train_dataset = ETCIDatasetUN(train_df, split="train", transform=transform)
-    validation_dataset = ETCIDatasetUN(valid_df, split="validation", transform=None)
+    validation_dataset = ETCIDatasetUN(valid_df[0:length], split="validation", transform=None)
 
     # create samplers
     stratified_sampler = sampler_utils.BalanceClassSampler(

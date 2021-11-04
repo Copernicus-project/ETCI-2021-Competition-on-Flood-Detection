@@ -19,7 +19,6 @@ def has_mask_un(mask_path):
 
 
 def has_mask(mask_path):
-    print("mask")
     img = cv2.imread(mask_path)
     thresh = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)[1]  # mask >200 <255
     if np.mean(thresh) > 0.0:
