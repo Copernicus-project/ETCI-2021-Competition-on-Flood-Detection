@@ -8,7 +8,7 @@ import torch.multiprocessing as mp
 import segmentation_models_pytorch as smp
 import torch
 
-from etci_dataset import ETCIDataset
+from etci_dataset import ETCIDataset,ETCIDatasetUN
 from utils import sampler_utils
 from utils import dataset_utils
 from utils import metric_utils
@@ -35,6 +35,66 @@ logging.basicConfig(
     format="%(name)s - %(levelname)s - %(message)s",
 )
 
+def get_dataloader_un(rank, world_size):
+    # create dataframes
+    train_df = dataset_utils.create_df_un(config.train_dir)
+    valid_df = dataset_utils.create_df_un(config.valid_dir)
+
+    # determine if an image has mask or not
+    flood_label_paths = train_df["flood_label_path"].values.tolist()
+    train_has_masks = list(map(dataset_utils.has_mask, flood_label_paths))
+    train_df["has_mask"] = train_has_masks
+
+
+    # filter invalid images
+    remove_indices = dataset_utils.filter_df_un(train_df)
+    train_df = train_df.drop(train_df.index[remove_indices])
+
+    # define augmentation transforms
+    transform = A.Compose(
+        [
+            A.HorizontalFlip(p=0.5),
+            A.Rotate(270),
+            A.ElasticTransform(
+                p=0.4, alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03
+            ),
+        ]
+    )
+
+    # define datasets
+    train_dataset = ETCIDatasetUN(train_df, split="train", transform=transform)
+    validation_dataset = ETCIDatasetUN(valid_df, split="validation", transform=None)
+
+
+    # create samplers
+    stratified_sampler = sampler_utils.BalanceClassSampler(
+        train_df["has_mask"].values.astype("int")
+    )
+    train_sampler = sampler_utils.DistributedSamplerWrapper(
+        stratified_sampler, rank=rank, num_replicas=world_size, shuffle=True
+    )
+    val_sampler = DistributedSampler(
+        validation_dataset, rank=rank, num_replicas=world_size, shuffle=False
+    )
+
+    # create data loaders
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config.local_batch_size,
+        sampler=train_sampler,
+        pin_memory=True,
+        num_workers=1,
+        worker_init_fn=worker_utils.seed_worker,
+    )
+    val_loader = DataLoader(
+        validation_dataset,
+        batch_size=config.local_batch_size,
+        sampler=val_sampler,
+        pin_memory=True,
+        num_workers=1,
+    )
+
+    return train_loader, val_loader
 
 def get_dataloader(rank, world_size):
     """Creates the data loaders."""
@@ -198,8 +258,9 @@ def train(rank, num_epochs, world_size):
     # serialization of model weights
     if rank == 0:
         torch.save(
-            model.module.state_dict(), f"{config.model_serialization}_{rank}.pth"
+            model.module.state_dict(), f"{config.model_serialization}_{rank}.pth"   #pretrained_unet_mobilenet_v2.pth
         )
+
 
 
 WORLD_SIZE = torch.cuda.device_count()
@@ -209,6 +270,6 @@ if __name__ == "__main__":
     print(torch.cuda.is_available())
     print(WORLD_SIZE)
     print(mp.cpu_count())
-
+    #train_loader, val_loader = get_dataloader_un(0, WORLD_SIZE)
     mp.spawn(train, args=(config.num_epochs, WORLD_SIZE), nprocs=WORLD_SIZE, join=True)
     print("finish")

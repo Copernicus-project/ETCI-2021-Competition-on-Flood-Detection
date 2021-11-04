@@ -6,7 +6,7 @@ import torch.distributed as dist
 
 def init_process(rank, size, backend="gloo"):
     os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "29500"
+    os.environ["MASTER_PORT"] = "29500" #29500
     dist.init_process_group(backend, rank=rank, world_size=size)
 
 

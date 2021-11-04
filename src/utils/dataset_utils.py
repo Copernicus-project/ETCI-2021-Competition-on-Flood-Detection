@@ -9,11 +9,19 @@ import cv2
 import numpy as np
 import pandas as pd
 
+def has_mask_un(mask_path):
+    img = cv2.imread(mask_path)
+
+    if np.mean(img) > 0.0:
+        return True
+    else:
+        return False
+
 
 def has_mask(mask_path):
-    img = cv2.imread(mask_path, 0)
-    thresh = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)[1]
-
+    print("mask")
+    img = cv2.imread(mask_path)
+    thresh = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY)[1]  # mask >200 <255
     if np.mean(thresh) > 0.0:
         return True
     else:
@@ -23,9 +31,26 @@ def has_mask(mask_path):
 def get_filename(filepath):
     return os.path.split(filepath)[1]
 
+def create_df_un(main_dir, split="train"):
+    image_paths = sorted(glob(main_dir + "/*.png", recursive=True))[:1000]
+    image_names = [get_filename(pth) for pth in image_paths]
+    region_names = [n.split("_")[-3] for n in image_names]
+    flood_label_paths,  = (
+        [],
+    )
+    for i in range(len(image_paths)):
+        flood_label_path = image_paths[i].replace("_img", "_label")
+        flood_label_paths.append(flood_label_path)
+
+    paths = {
+        "image_path": image_paths,
+        "flood_label_path": flood_label_paths,
+        "region": region_names,
+    }
+    return pd.DataFrame(paths)
 
 def create_df(main_dir, split="train"):
-    vv_image_paths = sorted(glob(main_dir + "/**/vv/*.png", recursive=True))
+    vv_image_paths = sorted(glob(main_dir + "/*.png", recursive=True))[:100]
     vv_image_names = [get_filename(pth) for pth in vv_image_paths]
     region_name_dates = ["_".join(n.split("_")[:2]) for n in vv_image_names]
     vh_image_paths, flood_label_paths, water_body_label_paths, region_names = (
@@ -82,6 +107,26 @@ def create_df(main_dir, split="train"):
 def filter_df(df):
     remove_indices = []
     for i, image_path in enumerate(df["vv_image_path"].tolist()):
+        # load image
+        image = cv2.imread(image_path, 0)
+
+        # get all unique values in image
+        image_values = list(np.unique(image))
+
+        # check values
+        binary_value_check = (
+            (image_values == [0, 255])
+            or (image_values == [0])
+            or (image_values == [255])
+        )
+
+        if binary_value_check is True:
+            remove_indices.append(i)
+    return remove_indices
+
+def filter_df_un(df):
+    remove_indices = []
+    for i, image_path in enumerate(df["image_path"].tolist()):
         # load image
         image = cv2.imread(image_path, 0)
 

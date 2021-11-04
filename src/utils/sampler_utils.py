@@ -26,7 +26,7 @@ class BalanceClassSampler(Sampler):
 
         labels = np.array(labels)
         samples_per_class = {label: (labels == label).sum() for label in set(labels)}
-
+        print(samples_per_class)
         self.lbl2idx = {
             label: np.arange(len(labels))[labels == label].tolist()
             for label in set(labels)

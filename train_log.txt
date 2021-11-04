@@ -1,0 +1,55 @@
+start
+{0: 1000}
+<utils.sampler_utils.DistributedSamplerWrapper object at 0x0000024F8C7CE850>
+epoch: 0
+0.18117246729135514
+losses: <utils.metric_utils.AvgMeter object at 0x0000024F8C7CED30>
+epoch: 1
+epoch: 2
+epoch: 3
+epoch: 4
+epoch: 5
+0.12565226978063584
+losses: <utils.metric_utils.AvgMeter object at 0x0000024F8CC99880>
+epoch: 6
+epoch: 7
+epoch: 8
+epoch: 9
+epoch: 10
+0.08338039672374725
+losses: <utils.metric_utils.AvgMeter object at 0x0000024F8CCB1520>
+epoch: 11
+epoch: 12
+epoch: 13
+epoch: 14
+finish
+
+start
+pretrained
+{0: 1000}
+<utils.sampler_utils.DistributedSamplerWrapper object at 0x00000239BD7696D0>
+epoch: 0
+0.16982599294185638
+losses: <utils.metric_utils.AvgMeter object at 0x00000239BD769EE0>
+epoch: 1
+epoch: 2
+epoch: 3
+epoch: 4
+epoch: 5
+0.08202900928258895
+losses: <utils.metric_utils.AvgMeter object at 0x00000239BD769B50>
+epoch: 6
+epoch: 7
+epoch: 8
+epoch: 9
+epoch: 10
+0.07996356791257858
+losses: <utils.metric_utils.AvgMeter object at 0x00000239BD769970>
+epoch: 11
+epoch: 12
+epoch: 13
+epoch: 14
+epoch: 15
+0.06734448033571243
+losses: <utils.metric_utils.AvgMeter object at 0x00000239BD769EE0>
+finish

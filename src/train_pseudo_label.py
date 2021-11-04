@@ -16,7 +16,7 @@ import torch.multiprocessing as mp
 import segmentation_models_pytorch as smp
 import torch
 
-from etci_dataset import ETCIDataset
+from etci_dataset import ETCIDataset, ETCIDatasetUN
 from utils import sampler_utils
 from utils import dataset_utils
 from utils import metric_utils
@@ -24,7 +24,7 @@ from utils import worker_utils
 import config
 
 import warnings
-
+import pandas as pd
 warnings.filterwarnings("ignore")
 
 # fix all the seeds and disable non-deterministic CUDA backends for
@@ -47,20 +47,22 @@ logging.basicConfig(
 def get_dataloader(rank, world_size):
     """Creates the data loaders."""
     # create dataframes
-    train_df = dataset_utils.create_df(config.train_dir)
-    valid_df = dataset_utils.create_df(config.valid_dir)
+    train_df = dataset_utils.create_df_un(config.train_dir)[0:10]
+    valid_df = dataset_utils.create_df_un(config.valid_dir)[0:10]
     # this path depends on where you have serialized the dataframe while
     # executing `notebook/Generate_Pseudo.ipynb`.
-    pseudo_df = "pseudo_df.csv"
-    train_df = train_df.append(pseudo_df)
 
+    pseudo_df_path = "../notebooks/pseudo_df.csv"
+    pseudo_df = pd.read_csv(pseudo_df_path)
+    train_df = pd.concat([train_df, pseudo_df], axis=1)
     # determine if an image has mask or not
-    flood_label_paths = train_df["flood_label_path"].values.tolist()
+    flood_label_paths = train_df["flood_label_path2"].values.tolist()
     train_has_masks = list(map(dataset_utils.has_mask, flood_label_paths))
+    print(train_has_masks)
     train_df["has_mask"] = train_has_masks
 
     # filter invalid images
-    remove_indices = dataset_utils.filter_df(train_df)
+    remove_indices = dataset_utils.filter_df_un(train_df)
     train_df = train_df.drop(train_df.index[remove_indices])
 
     # define augmentation transforms
@@ -75,8 +77,8 @@ def get_dataloader(rank, world_size):
     )
 
     # define dataset
-    train_dataset = ETCIDataset(train_df, split="train", transform=transform)
-    validation_dataset = ETCIDataset(valid_df, split="validation", transform=None)
+    train_dataset = ETCIDatasetUN(train_df, split="train", transform=transform)
+    validation_dataset = ETCIDatasetUN(valid_df, split="validation", transform=None)
 
     # create samplers
     stratified_sampler = sampler_utils.BalanceClassSampler(
@@ -95,7 +97,7 @@ def get_dataloader(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=train_sampler,
         pin_memory=True,
-        num_workers=8,
+        num_workers=1,
         worker_init_fn=worker_utils.seed_worker,
     )
     val_loader = DataLoader(
@@ -103,7 +105,7 @@ def get_dataloader(rank, world_size):
         batch_size=config.local_batch_size,
         sampler=val_sampler,
         pin_memory=True,
-        num_workers=8,
+        num_workers=1,
     )
 
     return train_loader, val_loader
@@ -118,7 +120,8 @@ def create_model(weight_path):
     model = smp.Unet(
         encoder_name="mobilenet_v2", encoder_weights=None, in_channels=3, classes=2
     )
-    model.load_state_dict(torch.load(weight_path))
+    weights = torch.load(weight_path)
+    model.load_state_dict(weights)
     return model
 
 
@@ -143,10 +146,11 @@ def train(rank, num_epochs, world_size, pretrained_path, finetune_path):
     scaler = torch.cuda.amp.GradScaler(enabled=True)
 
     # get data loaders
-    train_loader, val_loader = get_dataloader(rank, world_size)
-
+    train_loader, val_loader = get_dataloader(rank, int(world_size))
+    print(train_loader)
     ## begin training ##
     for epoch in range(num_epochs):
+        print(epoch)
         losses = metric_utils.AvgMeter()
         if rank == 0:
             logging.info(
@@ -200,6 +204,7 @@ def train(rank, num_epochs, world_size, pretrained_path, finetune_path):
 
             loss = losses.avg
             global_loss = metric_utils.global_meters_all_avg(rank, world_size, loss)
+            print(global_loss)
             if rank == 0:
                 logging.info(f"Epoch: {epoch + 1} Val Loss: {global_loss[0]:.3f}")
 
@@ -214,10 +219,11 @@ if __name__ == "__main__":
     ap.add_argument("-e", "--epochs", type=int, default=20, help="number of epochs")
     ap.add_argument(
         "-p",
-        "--pretrained-path",
+        "--pretrained_path",
         type=str,
         help="paths to the pretrained weights (with .pth)",
         required=True,
+        default='./pretrained_unet_mobilenet_v2_0.pth'
     )
     ap.add_argument(
         "-f",
@@ -225,17 +231,20 @@ if __name__ == "__main__":
         type=str,
         help="paths to the weights to be serialized after fine-tuning (without .pth)",
         required=True,
+        default='../new_weights/new_unet_v3.pth'
     )
     args = vars(ap.parse_args())
-
-    mp.spawn(
-        train,
-        args=(
-            args["epochs"],
-            WORLD_SIZE,
-            args["pretrained_path"],
-            args["finetune_path"],
-        ),
-        nprocs=WORLD_SIZE,
-        join=True,
-    )
+    args["pretrained_path"] = './pretrained_unet_mobilenet_v2_0.pth'
+    print(WORLD_SIZE)
+    train(0, args["epochs"], WORLD_SIZE, args["pretrained_path"], args["finetune_path"])
+    # mp.spawn(
+    #     train,
+    #     args=(
+    #         args["epochs"],
+    #         WORLD_SIZE,
+    #         args["pretrained_path"],
+    #         args["finetune_path"],
+    #     ),
+    #     nprocs=WORLD_SIZE,
+    #     join=True,
+    # )
